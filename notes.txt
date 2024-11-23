@@ -1,0 +1,58 @@
+prisma migration:
+npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0_init/migration.sql
+
+apply changes:
+prisma migrate dev
+
+applying to _prisma_migrations table:
+npx prisma migrate resolve --applied 0_init
+
+-----------------------------------------------
+
+
+Mesajlar için Zaman Damgası: Messages modelinde createdAt gibi bir alan ekleyerek mesajın ne zaman gönderildiğini kaydedebilirsiniz.
+Grup için Açıklama: Group modeline bir description alanı ekleyerek grup hakkında daha fazla bilgi verebilirsiniz.
+Kullanıcı Rolleri: GroupParticipants modelinde kullanıcı rolleri (örneğin, admin, üye) için daha fazla detay ekleyebilirsiniz.
+2. Socket.io ile Gerçek Zamanlı İletişim
+Socket.io kullanarak gerçek zamanlı iletişim sağlamak için aşağıdaki adımları izleyebilirsiniz:
+
+a. Mesaj Gönderme
+Kullanıcılar arasında mesaj göndermek için bir chat olayı oluşturabilirsiniz. Bu olay, bir kullanıcıdan diğerine mesaj göndermek için kullanılabilir.
+
+javascript
+
+Kodu Kopyala
+socket.on('chat', (data) => {
+    const { recipientId, messageContent } = data;
+    const targetSocketId = clients.get(recipientId);
+    if (targetSocketId) {
+        io.to(targetSocketId).emit('chat', {
+            senderId: socket.id,
+            messageContent: messageContent,
+            timestamp: new Date()
+        });
+    }
+});
+b. Grup Mesajlaşması
+Gruplar içinde mesajlaşmak için, grup kimliğini kullanarak mesajları yönlendirebilirsiniz.
+
+javascript
+
+Kodu Kopyala
+socket.on('groupChat', (data) => {
+    const { groupId, messageContent } = data;
+    // Tüm grup katılımcılarını al
+    const participants = getGroupParticipants(groupId); // Bu fonksiyonu veritabanından grup katılımcılarını almak için yazmalısınız.
+    participants.forEach(participant => {
+        const targetSocketId = clients.get(participant.userid);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('groupChat', {
+                groupId: groupId,
+                messageContent: messageContent,
+                senderId: socket.id,
+                timestamp: new Date()
+            });
+        }
+    });
+});
+
